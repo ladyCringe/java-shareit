@@ -1,6 +1,8 @@
 package ru.practicum.shareit.item;
 
-import org.springframework.stereotype.Component;
+import jakarta.validation.Valid;
+import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 import ru.practicum.shareit.exception.ForbiddenException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.exception.ValidationException;
@@ -12,11 +14,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Component
+@Validated
+@Service
 public class ItemServiceImpl implements ItemService {
     private final Map<Integer, Item> items = new HashMap<>();
     private int nextId = 1;
-    private UserServiceImpl userService;
+    private final UserServiceImpl userService;
 
     public ItemServiceImpl(UserServiceImpl userService) {
         this.userService = userService;
@@ -27,10 +30,9 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    public ItemDto addItem(ItemDto itemDto, Integer ownerId) {
+    public ItemDto addItem(@Valid ItemDto itemDto, Integer ownerId) {
+        checkOwner(ownerId);
         Item item = ItemMapper.toItem(itemDto, ownerId);
-        checkOwner(item);
-        validate(item);
         item.setId(getNextId());
         item.setOwnerId(ownerId);
         items.put(item.getId(), item);
@@ -39,12 +41,11 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDto updateItem(Integer itemId, ItemDto itemDto, Integer ownerId) {
-        Item item = items.get(itemId);
-        checkId(item);
+        Item item = checkId(itemId);
         if (!item.getOwnerId().equals(ownerId)) {
             throw new ForbiddenException("Item with id = " + itemId + " does not belong to user with id = " + ownerId);
         }
-        ItemMapper.updateItem(item, itemDto);
+        update(item, itemDto);
         items.put(item.getId(), item);
         return ItemMapper.toDto(item);
     }
@@ -59,50 +60,60 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDto getItemById(Integer itemId, Integer ownerId) {
-        checkId(items.get(itemId));
-        Item item = items.get(itemId);
+        checkOwner(ownerId);
+        Item item = checkId(itemId);
         return ItemMapper.toDto(item);
     }
 
     @Override
     public List<ItemDto> searchItems(String text, Integer ownerId) {
+        checkText(text);
+        checkOwner(ownerId);
+        String lowerText = text.toLowerCase();
         return items.values().stream()
                 .filter(Item::getAvailable)
                 .filter(item ->
                         item.getOwnerId().equals(ownerId) &&
-                                (item.getName().toLowerCase().contains(text.toLowerCase()) ||
-                                        item.getDescription().toLowerCase().contains(text.toLowerCase())))
+                                (item.getName().toLowerCase().contains(lowerText) ||
+                                        item.getDescription().toLowerCase().contains(lowerText)))
                 .map(ItemMapper::toDto)
                 .toList();
     }
 
-    private void checkOwner(Item item) {
-        if (item.getOwnerId() == null || item.getOwnerId() < 1) {
+    private void checkOwner(Integer ownerId) {
+        if (ownerId == null || ownerId < 1) {
             throw new ValidationException("OwnerId should not be not empty and positive");
         }
-        if (userService.getUserById(item.getOwnerId()) == null) {
-            throw new NotFoundException("User with id = " + item.getOwnerId() + " was not found");
+        if (userService.getUserById(ownerId) == null) {
+            throw new NotFoundException("User with id = " + ownerId + " was not found");
         }
     }
 
-    private void checkId(Item item) {
-        if (item.getId() == null || item.getId() < 1) {
+    private Item checkId(Integer itemId) {
+        if (itemId == null || itemId < 1) {
             throw new ValidationException("Id should be not empty and positive");
         }
-        if (!items.containsKey(item.getId())) {
-            throw new ValidationException("Item with id = " + item.getId() + " was not found");
+        if (!items.containsKey(itemId)) {
+            throw new ValidationException("Item with id = " + itemId + " was not found");
+        }
+        return items.get(itemId);
+    }
+
+    private void checkText(String text) {
+        if (text == null) {
+            throw new ValidationException("Id should be not empty and positive");
         }
     }
 
-    private void validate(Item item) {
-        if (item.getAvailable() == null) {
-            throw new ValidationException("Available field should be not empty and positive");
+    private void update(Item item, ItemDto itemDto) {
+        if (itemDto.getName() != null && !itemDto.getName().isBlank()) {
+            item.setName(itemDto.getName());
         }
-        if (item.getName() == null || item.getName().isBlank()) {
-            throw new ValidationException("Name should not be empty and must contain @");
+        if (itemDto.getDescription() != null && !itemDto.getDescription().isBlank()) {
+            item.setDescription(itemDto.getDescription());
         }
-        if (item.getDescription() == null || item.getDescription().isBlank()) {
-            throw new ValidationException("Description should not be empty and must contain @");
+        if (itemDto.getAvailable() != null) {
+            item.setAvailable(itemDto.getAvailable());
         }
     }
 }

@@ -1,6 +1,8 @@
 package ru.practicum.shareit.user;
 
-import org.springframework.stereotype.Component;
+import jakarta.validation.Valid;
+import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
 import ru.practicum.shareit.exception.ConflictException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.exception.ValidationException;
@@ -11,7 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Component
+@Validated
+@Service
 public class UserServiceImpl implements UserService {
     private final Map<Integer, User> users = new HashMap<>();
     private int nextId = 1;
@@ -21,12 +24,9 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserDto createUser(UserDto  userDto) {
+    public UserDto createUser(@Valid UserDto  userDto) {
+        checkEmail(userDto);
         User user = UserMapper.toUser(userDto);
-        if (users.values().stream().anyMatch(u -> u.getEmail().equals(user.getEmail()))) {
-            throw new ConflictException("Email already in use: " + userDto.getEmail());
-        }
-        validate(user);
         user.setId(getNextId());
         users.put(user.getId(), user);
         return UserMapper.toDto(user);
@@ -40,17 +40,18 @@ public class UserServiceImpl implements UserService {
         if (users.values().stream().anyMatch(u -> u.getEmail().equals(userDto.getEmail()))) {
             throw new ConflictException("Email already in use: " + userDto.getEmail());
         }
+        validateUpd(userDto);
         User user = users.get(id);
-        checkUser(user.getId());
-        validate(user);
-        UserMapper.update(user, userDto);
+        update(user, userDto);
         users.put(user.getId(), user);
         return UserMapper.toDto(user);
     }
 
     @Override
     public List<UserDto> getAllUsers() {
-        return users.values().stream().map(UserMapper::toDto).toList();
+        return users.values().stream()
+                .map(UserMapper::toDto)
+                .toList();
     }
 
     @Override
@@ -64,22 +65,27 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void deleteUser(Integer id) {
-        checkUser(id);
         users.remove(id);
     }
 
-    private void validate(User user) {
-        if (user.getEmail() == null || user.getEmail().isBlank() || !user.getEmail().contains("@")) {
-            throw new ValidationException("Email should not be empty and must contain @");
-        }
-        if (user.getName() == null || user.getName().isBlank()) {
-            throw new ValidationException("Name should not be empty and must contain @");
+    private void validateUpd(UserDto user) {
+        if (user.getEmail() == null && user.getName() == null) {
+            throw new ValidationException("Updated user should not be empty");
         }
     }
 
-    private void checkUser(int userId) {
-        if (getUserById(userId) == null) {
-            throw new NotFoundException("User with id " + userId + " not found");
+    private void checkEmail(UserDto user) {
+        if (users.values().stream().anyMatch(u -> u.getEmail().equals(user.getEmail()))) {
+            throw new ConflictException("Email already in use: " + user.getEmail());
+        }
+    }
+
+    private void update(User user, UserDto userDto) {
+        if (userDto.getName() != null && !userDto.getName().isBlank()) {
+            user.setName(userDto.getName());
+        }
+        if (userDto.getEmail() != null && !userDto.getEmail().isBlank()) {
+            user.setEmail(userDto.getEmail());
         }
     }
 }

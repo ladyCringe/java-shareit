@@ -19,13 +19,4 @@ public class UserMapper {
                 user.getEmail()
         );
     }
-
-    public static void update(User user, UserDto userDto) {
-        if (userDto.getName() != null) {
-            user.setName(userDto.getName());
-        }
-        if (userDto.getEmail() != null) {
-            user.setEmail(userDto.getEmail());
-        }
-    }
 }
