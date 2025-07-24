@@ -72,7 +72,6 @@ public class ItemServiceImpl implements ItemService {
         return items.values().stream()
                 .filter(Item::getAvailable)
                 .filter(item ->
-                        item.getOwnerId().equals(ownerId) &&
                                 (item.getName().toLowerCase().contains(lowerText) ||
                                         item.getDescription().toLowerCase().contains(lowerText)))
                 .map(ItemMapper::toDto)

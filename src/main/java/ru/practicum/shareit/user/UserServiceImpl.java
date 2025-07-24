@@ -34,9 +34,11 @@ public class UserServiceImpl implements UserService {
         if (!users.containsKey(id)) {
             throw new NotFoundException("User with id = " + id + " was not found");
         }
-        checkEmail(userDto);
         validateUpd(userDto);
         User user = users.get(id);
+        if (userDto.getEmail() != null && !userDto.getEmail().equals(user.getEmail())) {
+            checkEmail(userDto);
+        }
         update(user, userDto);
         users.put(user.getId(), user);
         return UserMapper.toDto(user);
