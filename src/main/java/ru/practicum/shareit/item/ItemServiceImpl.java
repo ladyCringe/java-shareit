@@ -52,6 +52,7 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public List<ItemDto> getItemsByOwner(Integer ownerId) {
+        checkOwner(ownerId);
         return items.values().stream()
                 .filter(item -> item.getOwnerId().equals(ownerId))
                 .map(ItemMapper::toDto)

@@ -37,9 +37,7 @@ public class UserServiceImpl implements UserService {
         if (!users.containsKey(id)) {
             throw new NotFoundException("User with id = " + id + " was not found");
         }
-        if (users.values().stream().anyMatch(u -> u.getEmail().equals(userDto.getEmail()))) {
-            throw new ConflictException("Email already in use: " + userDto.getEmail());
-        }
+        checkEmail(userDto);
         validateUpd(userDto);
         User user = users.get(id);
         update(user, userDto);
