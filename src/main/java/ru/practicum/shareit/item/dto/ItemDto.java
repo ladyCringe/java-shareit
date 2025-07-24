@@ -9,10 +9,8 @@ import lombok.*;
 @NoArgsConstructor
 public class ItemDto {
     private Integer id;
-    @NotNull
     @NotBlank
     private String name;
-    @NotNull
     @NotBlank
     private String description;
     @NotNull

@@ -1,10 +1,7 @@
 package ru.practicum.shareit.item;
 
-import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
-import org.springframework.validation.annotation.Validated;
 import ru.practicum.shareit.exception.ForbiddenException;
-import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.exception.ValidationException;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.model.Item;
@@ -14,7 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Validated
 @Service
 public class ItemServiceImpl implements ItemService {
     private final Map<Integer, Item> items = new HashMap<>();
@@ -30,7 +26,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    public ItemDto addItem(@Valid ItemDto itemDto, Integer ownerId) {
+    public ItemDto addItem(ItemDto itemDto, Integer ownerId) {
         checkOwner(ownerId);
         Item item = ItemMapper.toItem(itemDto, ownerId);
         item.setId(getNextId());
@@ -68,7 +64,9 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public List<ItemDto> searchItems(String text, Integer ownerId) {
-        checkText(text);
+        if (text == null || text.isBlank()) {
+            return List.of();
+        }
         checkOwner(ownerId);
         String lowerText = text.toLowerCase();
         return items.values().stream()
@@ -85,9 +83,7 @@ public class ItemServiceImpl implements ItemService {
         if (ownerId == null || ownerId < 1) {
             throw new ValidationException("OwnerId should not be not empty and positive");
         }
-        if (userService.getUserById(ownerId) == null) {
-            throw new NotFoundException("User with id = " + ownerId + " was not found");
-        }
+        userService.getUserById(ownerId);
     }
 
     private Item checkId(Integer itemId) {
@@ -98,12 +94,6 @@ public class ItemServiceImpl implements ItemService {
             throw new ValidationException("Item with id = " + itemId + " was not found");
         }
         return items.get(itemId);
-    }
-
-    private void checkText(String text) {
-        if (text == null) {
-            throw new ValidationException("Id should be not empty and positive");
-        }
     }
 
     private void update(Item item, ItemDto itemDto) {

@@ -1,8 +1,6 @@
 package ru.practicum.shareit.user;
 
-import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
-import org.springframework.validation.annotation.Validated;
 import ru.practicum.shareit.exception.ConflictException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.exception.ValidationException;
@@ -13,7 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Validated
 @Service
 public class UserServiceImpl implements UserService {
     private final Map<Integer, User> users = new HashMap<>();
@@ -24,7 +21,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserDto createUser(@Valid UserDto  userDto) {
+    public UserDto createUser(UserDto  userDto) {
         checkEmail(userDto);
         User user = UserMapper.toUser(userDto);
         user.setId(getNextId());

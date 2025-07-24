@@ -1,6 +1,8 @@
 package ru.practicum.shareit.item;
 
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.shareit.item.dto.ItemDto;
 
@@ -9,6 +11,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/items")
+@Validated
 public class ItemController {
     private final ItemService itemService;
 
@@ -17,7 +20,7 @@ public class ItemController {
     }
 
     @PostMapping
-    public ItemDto addItem(@RequestBody ItemDto itemDto,
+    public ItemDto addItem(@Valid @RequestBody ItemDto itemDto,
                            @RequestHeader("X-Sharer-User-Id") Integer ownerId) {
         log.info("New request to add item {} for owner with id {}", itemDto, ownerId);
         ItemDto createdItem = itemService.addItem(itemDto, ownerId);
