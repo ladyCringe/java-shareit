@@ -4,9 +4,12 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.shareit.comments.dto.CommentDto;
 import ru.practicum.shareit.item.dto.ItemDto;
+import ru.practicum.shareit.item.dto.ItemWithBookingsDto;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -38,18 +41,18 @@ public class ItemController {
     }
 
     @GetMapping
-    public Iterable<ItemDto> getItemsByOwner(@RequestHeader("X-Sharer-User-Id") Integer ownerId) {
+    public Iterable<ItemWithBookingsDto> getItemsByOwner(@RequestHeader("X-Sharer-User-Id") Integer ownerId) {
         log.info("New request to get items for owner with id {}", ownerId);
-        List<ItemDto> items = itemService.getItemsByOwner(ownerId);
+        List<ItemWithBookingsDto> items = itemService.getItemsByOwner(ownerId);
         log.info("Items successfully displayed");
         return items;
     }
 
     @GetMapping("/{itemId}")
-    public ItemDto getItemById(@PathVariable Integer itemId,
+    public ItemWithBookingsDto getItemById(@PathVariable Integer itemId,
                                @RequestHeader("X-Sharer-User-Id") Integer ownerId) {
         log.info("New request to get item with id {} for owner with id {}", itemId, ownerId);
-        ItemDto item = itemService.getItemById(itemId, ownerId);
+        ItemWithBookingsDto item = itemService.getItemById(itemId, ownerId);
         log.info("Item with id {} successfully displayed", itemId);
         return item;
     }
@@ -62,4 +65,15 @@ public class ItemController {
         log.info("Item successfully displayed");
         return items;
     }
+
+    @PostMapping("/{itemId}/comment")
+    public CommentDto addComment(@PathVariable Integer itemId,
+                                 @RequestBody Map<String, String> body,
+                                 @RequestHeader("X-Sharer-User-Id") Integer userId) {
+        log.info("New request to add comment for item with id {} by user with id {}", itemId, userId);
+        CommentDto comment = itemService.addComment(itemId, userId, body.get("text"));
+        log.info("Comment successfully added");
+        return comment;
+    }
+
 }
