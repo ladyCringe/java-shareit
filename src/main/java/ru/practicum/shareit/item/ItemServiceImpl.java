@@ -1,9 +1,11 @@
 package ru.practicum.shareit.item;
 
+import io.micrometer.common.util.StringUtils;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.booking.BookingMapper;
 import ru.practicum.shareit.booking.BookingRepository;
 import ru.practicum.shareit.booking.dto.BookingShortDto;
+import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.comments.CommentMapper;
 import ru.practicum.shareit.comments.CommentRepository;
 import ru.practicum.shareit.comments.dto.CommentDto;
@@ -19,6 +21,9 @@ import ru.practicum.shareit.user.dto.UserDto;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static ru.practicum.shareit.booking.model.BookingStatus.APPROVED;
 
@@ -59,15 +64,33 @@ public class ItemServiceImpl implements ItemService {
     public List<ItemWithBookingsDto> getItemsByOwner(Integer ownerId) {
         checkOwner(ownerId);
         List<Item> items = itemRepository.findByOwnerId(ownerId);
+        if (items.isEmpty()) {
+            return List.of();
+        }
+
+        List<Integer> itemIds = items.stream().map(Item::getId).toList();
         LocalDateTime now = LocalDateTime.now();
+
+        List<Booking> lastBookings = bookingRepository.findLastBookingsForItems(itemIds, now);
+        List<Booking> nextBookings = bookingRepository.findNextBookingsForItems(itemIds, now);
+
+        Map<Integer, Booking> lastMap = lastBookings.stream()
+                .collect(Collectors.toMap(b -> b.getItem().getId(), b -> b));
+
+        Map<Integer, Booking> nextMap = nextBookings.stream()
+                .collect(Collectors.toMap(b -> b.getItem().getId(), b -> b));
+
+        List<Comment> comments = commentRepository.findByItemIdIn(itemIds);
+        Map<Integer, List<Comment>> commentsByItem = comments.stream()
+                .collect(Collectors.groupingBy(c -> c.getItem().getId()));
 
         return items.stream()
                 .map(item -> {
-                    BookingShortDto last =
-                            BookingMapper.toShortDto(bookingRepository.findLastBooking(item.getId(), APPROVED, now));
+                    BookingShortDto last = Optional.ofNullable(lastMap.get(item.getId()))
+                            .map(BookingMapper::toShortDto).orElse(null);
 
-                    BookingShortDto next =
-                            BookingMapper.toShortDto(bookingRepository.findNextBooking(item.getId(), now));
+                    BookingShortDto next = Optional.ofNullable(nextMap.get(item.getId()))
+                            .map(BookingMapper::toShortDto).orElse(null);
 
                     return new ItemWithBookingsDto(
                             item.getId(),
@@ -76,7 +99,7 @@ public class ItemServiceImpl implements ItemService {
                             item.getAvailable(),
                             last,
                             next,
-                            commentRepository.findByItemId(item.getId())
+                            commentsByItem.getOrDefault(item.getId(), List.of())
                     );
                 })
                 .toList();
@@ -113,8 +136,11 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public CommentDto addComment(Integer itemId, Integer userId, String text) {
-        Item item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new ValidationException("Item not found"));
+        if (StringUtils.isBlank(text)) {
+            throw new ValidationException("Comment should not be empty");
+        }
+
+        Item item = checkId(itemId);
 
         UserDto user = userService.getUserById(userId);
 
@@ -125,10 +151,7 @@ public class ItemServiceImpl implements ItemService {
             throw new ValidationException("User has not completed a booking for this item");
         }
 
-        Comment comment = new Comment();
-        comment.setText(text);
-        comment.setItem(item);
-        comment.setAuthor(UserMapper.toUser(user));
+        Comment comment = CommentMapper.toComment(text, item, UserMapper.toUser(user));
         comment.setCreated(LocalDateTime.now());
 
         return CommentMapper.toDto(commentRepository.save(comment));

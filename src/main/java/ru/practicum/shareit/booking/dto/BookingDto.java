@@ -1,5 +1,6 @@
 package ru.practicum.shareit.booking.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import ru.practicum.shareit.booking.model.BookingStatus;
 import ru.practicum.shareit.item.dto.ItemDto;
@@ -14,6 +15,7 @@ public class BookingDto {
     private Integer id;
     private LocalDateTime start;
     private LocalDateTime end;
+    @NotNull
     private Integer itemId;
     private ItemDto item;
     private UserDto booker;

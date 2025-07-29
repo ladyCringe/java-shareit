@@ -30,4 +30,62 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
     boolean existsByBookerIdAndItemIdAndEndBeforeAndStatus(Integer userId, Integer itemId,
                                                            LocalDateTime end, BookingStatus status);
 
+    @Query("SELECT b FROM Booking b WHERE b.booker.id = :userId AND b.start <= :now AND b.end >= :now ORDER BY b.start DESC")
+    List<Booking> findCurrentBookingsByUser(Integer userId, LocalDateTime now);
+
+    @Query("SELECT b FROM Booking b WHERE b.item.ownerId = :ownerId AND b.start <= :now AND b.end >= :now ORDER BY b.start DESC")
+    List<Booking> findCurrentBookingsByOwner(Integer ownerId, LocalDateTime now);
+
+    @Query("SELECT b FROM Booking b WHERE b.booker.id = :userId AND b.end < :now ORDER BY b.start DESC")
+    List<Booking> findPastBookingsByUser(Integer userId, LocalDateTime now);
+
+    @Query("SELECT b FROM Booking b WHERE b.item.ownerId = :ownerId AND b.end < :now ORDER BY b.start DESC")
+    List<Booking> findPastBookingsByOwner(Integer ownerId, LocalDateTime now);
+
+    @Query("SELECT b FROM Booking b WHERE b.booker.id = :userId AND b.start > :now ORDER BY b.start DESC")
+    List<Booking> findFutureBookingsByUser(Integer userId, LocalDateTime now);
+
+    @Query("SELECT b FROM Booking b WHERE b.item.ownerId = :ownerId AND b.start > :now ORDER BY b.start DESC")
+    List<Booking> findFutureBookingsByOwner(Integer ownerId, LocalDateTime now);
+
+    @Query("SELECT b FROM Booking b WHERE b.booker.id = :userId AND b.status = 'WAITING' ORDER BY b.start DESC")
+    List<Booking> findWaitingBookingsByUser(Integer userId);
+
+    @Query("SELECT b FROM Booking b WHERE b.item.ownerId = :ownerId AND b.status = 'WAITING' ORDER BY b.start DESC")
+    List<Booking> findWaitingBookingsByOwner(Integer ownerId);
+
+    @Query("SELECT b FROM Booking b WHERE b.booker.id = :userId AND b.status = 'REJECTED' ORDER BY b.start DESC")
+    List<Booking> findRejectedBookingsByUser(Integer userId);
+
+    @Query("SELECT b FROM Booking b WHERE b.item.ownerId = :ownerId AND b.status = 'REJECTED' ORDER BY b.start DESC")
+    List<Booking> findRejectedBookingsByOwner(Integer ownerId);
+
+    @Query("""
+    SELECT b FROM Booking b
+    WHERE b.item.id IN :itemIds
+      AND b.status = 'APPROVED'
+      AND b.start < :now
+      AND b.start = (
+          SELECT MAX(b2.start) FROM Booking b2
+          WHERE b2.item.id = b.item.id
+            AND b2.status = 'APPROVED'
+            AND b2.start < :now
+      )
+""")
+    List<Booking> findLastBookingsForItems(List<Integer> itemIds, LocalDateTime now);
+
+    @Query("""
+    SELECT b FROM Booking b
+    WHERE b.item.id IN :itemIds
+      AND b.status = 'APPROVED'
+      AND b.start > :now
+      AND b.start = (
+          SELECT MIN(b2.start) FROM Booking b2
+          WHERE b2.item.id = b.item.id
+            AND b2.status = 'APPROVED'
+            AND b2.start > :now
+      )
+""")
+    List<Booking> findNextBookingsForItems(List<Integer> itemIds, LocalDateTime now);
+
 }

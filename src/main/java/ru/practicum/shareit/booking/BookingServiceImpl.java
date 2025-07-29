@@ -30,11 +30,8 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public BookingDto createBooking(BookingDto bookingDto, Integer userId) {
         User booker = getUser(userId);
-        if (bookingDto.getItemId() == null) {
-            throw new NotFoundException("Item and item id should not be empty");
-        }
         Item item = itemRepository.findById(bookingDto.getItemId())
-                .orElseThrow(() -> new NotFoundException("Item not found"));
+                .orElseThrow(() -> new NotFoundException("Item with id = " + bookingDto.getItemId() + " not found"));
 
         if (!item.getAvailable()) {
             throw new ValidationException("Item is not available for booking");
@@ -43,12 +40,8 @@ public class BookingServiceImpl implements BookingService {
             throw new ForbiddenException("Owner cannot book their own item");
         }
 
-        Booking booking = new Booking();
-        booking.setStart(bookingDto.getStart());
-        booking.setEnd(bookingDto.getEnd());
-        booking.setItem(item);
-        booking.setBooker(booker);
-        booking.setStatus(BookingStatus.WAITING);
+        bookingDto.setStatus(BookingStatus.WAITING);
+        Booking booking = BookingMapper.toBooking(bookingDto, item, booker);
 
         return BookingMapper.toDto(bookingRepository.save(booking));
     }
@@ -69,6 +62,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingDto getBookingById(Integer bookingId, Integer userId) {
+        getUser(userId);
         Booking booking = getBooking(bookingId);
         if (!booking.getBooker().getId().equals(userId)
                 && !booking.getItem().getOwnerId().equals(userId)) {
@@ -83,8 +77,18 @@ public class BookingServiceImpl implements BookingService {
         BookingState bookingState = BookingState.from(state);
         LocalDateTime now = LocalDateTime.now();
 
-        return filterBookings(bookingRepository.findByBookerId(userId, Sort.by("start").descending()),
-                bookingState, now);
+        List<Booking> bookings = switch (bookingState) {
+            case ALL -> bookingRepository.findByBookerId(userId, Sort.by("start").descending());
+            case CURRENT -> bookingRepository.findCurrentBookingsByUser(userId, now);
+            case PAST -> bookingRepository.findPastBookingsByUser(userId, now);
+            case FUTURE -> bookingRepository.findFutureBookingsByUser(userId, now);
+            case WAITING -> bookingRepository.findWaitingBookingsByUser(userId);
+            case REJECTED -> bookingRepository.findRejectedBookingsByUser(userId);
+        };
+
+        return bookings.stream()
+                .map(BookingMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -93,31 +97,27 @@ public class BookingServiceImpl implements BookingService {
         BookingState bookingState = BookingState.from(state);
         LocalDateTime now = LocalDateTime.now();
 
-        return filterBookings(bookingRepository.findByItemOwnerId(ownerId, Sort.by("start").descending()),
-                bookingState, now);
-    }
+        List<Booking> bookings = switch (bookingState) {
+            case ALL -> bookingRepository.findByItemOwnerId(ownerId, Sort.by("start").descending());
+            case CURRENT -> bookingRepository.findCurrentBookingsByOwner(ownerId, now);
+            case PAST -> bookingRepository.findPastBookingsByOwner(ownerId, now);
+            case FUTURE -> bookingRepository.findFutureBookingsByOwner(ownerId, now);
+            case WAITING -> bookingRepository.findWaitingBookingsByOwner(ownerId);
+            case REJECTED -> bookingRepository.findRejectedBookingsByOwner(ownerId);
+        };
 
-    private List<BookingDto> filterBookings(List<Booking> bookings, BookingState state, LocalDateTime now) {
         return bookings.stream()
-                .filter(b -> switch (state) {
-                    case ALL -> true;
-                    case CURRENT -> b.getStart().isBefore(now) && b.getEnd().isAfter(now);
-                    case PAST -> b.getEnd().isBefore(now);
-                    case FUTURE -> b.getStart().isAfter(now);
-                    case WAITING -> b.getStatus() == BookingStatus.WAITING;
-                    case REJECTED -> b.getStatus() == BookingStatus.REJECTED;
-                })
                 .map(BookingMapper::toDto)
                 .collect(Collectors.toList());
     }
 
     private User getUser(Integer userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User with id = " + userId + " not found"));
     }
 
     private Booking getBooking(Integer bookingId) {
         return bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new NotFoundException("Booking not found"));
+                .orElseThrow(() -> new NotFoundException("Booking with id = " + bookingId + " not found"));
     }
 }
