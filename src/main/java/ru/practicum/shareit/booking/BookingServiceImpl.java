@@ -29,6 +29,9 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingDto createBooking(BookingDto bookingDto, Integer userId) {
+        if (!bookingDto.getStart().isBefore(bookingDto.getEnd())) {
+            throw new ValidationException("Start date should be before end date");
+        }
         User booker = getUser(userId);
         Item item = itemRepository.findById(bookingDto.getItemId())
                 .orElseThrow(() -> new NotFoundException("Item with id = " + bookingDto.getItemId() + " not found"));
