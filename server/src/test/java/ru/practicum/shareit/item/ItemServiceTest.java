@@ -153,7 +153,7 @@ public class ItemServiceTest {
                 null
         );
         BookingDto booking = bookingService.createBooking(mission, genosDto.getId());
-        bookingService.approveBooking(saitamaDto.getId(), booking.getId(), true);
+        bookingService.approveBooking(booking.getId(), saitamaDto.getId(), true);
 
         itemService.addComment(gear.getId(), genosDto.getId(), "Too OP!");
 
