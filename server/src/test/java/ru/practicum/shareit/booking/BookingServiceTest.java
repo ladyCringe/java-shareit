@@ -183,6 +183,57 @@ class BookingServiceTest {
     }
 
     @Test
+    void getOwnerBookingsCURRENTTest() {
+        User kakashi = new User(30, "Kakashi", "copy@konoha.jp");
+        Item sharingan = new Item(301, "Sharingan", "Copy ninja eye",
+                kakashi.getId(), true, null);
+        Booking activeBooking = new Booking(500, LocalDateTime.now().minusHours(2),
+                LocalDateTime.now().plusHours(2), sharingan, new User(31, "Obito", "obito@konoha.jp"), BookingStatus.APPROVED);
+
+        when(userRepository.findById(kakashi.getId())).thenReturn(Optional.of(kakashi));
+        when(bookingRepository.findCurrentBookingsByOwner(eq(kakashi.getId()), any())).thenReturn(List.of(activeBooking));
+
+        var result = bookingService.getOwnerBookings(kakashi.getId(), "CURRENT");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getItem().getName()).isEqualTo("Sharingan");
+    }
+
+    @Test
+    void getOwnerBookingsPASTTest() {
+        User asuma = new User(40, "Asuma", "windblade@konoha.jp");
+        Item trenchKnives = new Item(401, "Trench Knives", "Wind chakra knives",
+                asuma.getId(), true, null);
+        Booking pastBooking = new Booking(600, LocalDateTime.now().minusDays(3),
+                LocalDateTime.now().minusDays(1), trenchKnives, new User(41, "Shikamaru", "lazy@konoha.jp"), BookingStatus.APPROVED);
+
+        when(userRepository.findById(asuma.getId())).thenReturn(Optional.of(asuma));
+        when(bookingRepository.findPastBookingsByOwner(eq(asuma.getId()), any())).thenReturn(List.of(pastBooking));
+
+        var result = bookingService.getOwnerBookings(asuma.getId(), "PAST");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getItem().getName()).isEqualTo("Trench Knives");
+    }
+
+    @Test
+    void getOwnerBookingsFUTURETest() {
+        User shino = new User(50, "Shino", "bugs@konoha.jp");
+        Item bugSwarm = new Item(501, "Bug Swarm", "Insect jutsu",
+                shino.getId(), true, null);
+        Booking futureBooking = new Booking(700, LocalDateTime.now().plusDays(1),
+                LocalDateTime.now().plusDays(2), bugSwarm, new User(51, "Kurenai", "illusion@konoha.jp"), BookingStatus.WAITING);
+
+        when(userRepository.findById(shino.getId())).thenReturn(Optional.of(shino));
+        when(bookingRepository.findFutureBookingsByOwner(eq(shino.getId()), any())).thenReturn(List.of(futureBooking));
+
+        var result = bookingService.getOwnerBookings(shino.getId(), "FUTURE");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getItem().getName()).isEqualTo("Bug Swarm");
+    }
+
+    @Test
     void getOwnerBookingsTest() {
         User gaara = new User(21, "Gaara", "sand@sunavillage.org");
         Item sandGourd = new Item(777, "Sand Gourd", "A weapon made of sand",

@@ -162,4 +162,30 @@ public class ItemServiceTest {
         ).isInstanceOf(ValidationException.class);
     }
 
+    @Test
+    void getItemByIdWithBookings() {
+        UserDto saitamaDto = userService.createUser(saitama);
+        UserDto genosDto = userService.createUser(genos);
+
+        ItemDto gear = itemService.addItem(capeOfSeriousness, saitamaDto.getId());
+
+        BookingDto futureMission = new BookingDto(
+                gear.getId(),
+                LocalDateTime.now().plusDays(1),
+                LocalDateTime.now().plusDays(2),
+                gear.getId(),
+                gear,
+                genosDto,
+                null
+        );
+        BookingDto futureBooking = bookingService.createBooking(futureMission, genosDto.getId());
+        bookingService.approveBooking(futureBooking.getId(), saitamaDto.getId(), true);
+
+        ItemWithBookingsDto fetched = itemService.getItemById(gear.getId(), saitamaDto.getId());
+
+        Assertions.assertThat(fetched.getNextBooking()).isNotNull();
+        Assertions.assertThat(fetched.getNextBooking().getId()).isEqualTo(futureBooking.getId());
+    }
+
+
 }

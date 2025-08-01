@@ -16,12 +16,4 @@ public class ItemRequestMapper {
                 LocalDateTime.now()
         );
     }
-
-    public static ItemRequestDto toDto(ItemRequest request) {
-        return new ItemRequestDto(
-                request.getId(),
-                request.getDescription(),
-                request.getCreated()
-        );
-    }
 }
