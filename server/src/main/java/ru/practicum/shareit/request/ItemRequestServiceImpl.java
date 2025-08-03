@@ -3,7 +3,6 @@ package ru.practicum.shareit.request;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.exception.NotFoundException;
-import ru.practicum.shareit.item.ItemMapper;
 import ru.practicum.shareit.item.ItemRepository;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.request.dto.ItemRequestDto;
@@ -15,6 +14,7 @@ import ru.practicum.shareit.user.model.User;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,7 +31,7 @@ public class ItemRequestServiceImpl implements ItemRequestService {
         ItemRequest request = ItemRequestMapper.toItemRequest(requestDto, user);
         request = requestRepository.save(request);
 
-        return toResponseDto(request, Collections.emptyList());
+        return ItemRequestMapper.toResponseDto(request, Collections.emptyList());
     }
 
     @Override
@@ -53,27 +53,25 @@ public class ItemRequestServiceImpl implements ItemRequestService {
         ItemRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new NotFoundException("Request with id " + requestId + " not found"));
         List<Item> items = itemRepository.findByRequestId(requestId);
-        return toResponseDto(request, items);
+        return ItemRequestMapper.toResponseDto(request, items);
     }
 
     private List<ItemRequestResponseDto> toResponseDtoList(List<ItemRequest> requests) {
+        List<Integer> requestIds = requests.stream()
+                .map(ItemRequest::getId)
+                .toList();
+
+        List<Item> items = itemRepository.findAllByRequestIds(requestIds);
+
+        Map<Integer, List<Item>> itemsByRequestId = items.stream()
+                .collect(Collectors.groupingBy(item -> item.getRequest().getId()));
+
         return requests.stream()
-                .map(request -> {
-                    List<Item> items = itemRepository.findByRequestId(request.getId());
-                    return toResponseDto(request, items);
-                })
+                .map(request -> ItemRequestMapper.toResponseDto(
+                        request,
+                        itemsByRequestId.getOrDefault(request.getId(), List.of())
+                ))
                 .collect(Collectors.toList());
     }
 
-    private ItemRequestResponseDto toResponseDto(ItemRequest request, List<Item> items) {
-        return new ItemRequestResponseDto(
-                request.getId(),
-                request.getDescription(),
-                request.getCreated(),
-                items.stream()
-                        .map(ItemMapper::toDto)
-                        .collect(Collectors.toList())
-        );
-    }
 }
-
